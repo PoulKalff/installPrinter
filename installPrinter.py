@@ -7,6 +7,7 @@ import signal
 import urllib2
 import platform
 import argparse
+import subprocess
 
 version = "v0.82"   # Implemented commandline-switches
 
@@ -47,8 +48,13 @@ resAdr  = {'fib':'Fibigerstraede',
 
 # --- Funktions ----------------------------------------------------------------------------------
 
+def runExternal(command):
+    process = subprocess.Popen(command, stdout=subprocess.PIPE, shell=True, stderr=open(os.devnull, 'w'))
+    output, err = process.communicate()
+    return output
+
 def checkCredentials():
-    email = args.user if args.user else raw_input("\n  Please provide your email address : ")
+    email = args.user if args.user else raw_input("  Please provide your email address : ")
     if not '@' in email:
         sys.exit("    ERROR Invalid email address!\n" + str(email))
     user, domain = email.split('@')
@@ -66,15 +72,17 @@ def addLinuxCredentials(prt, crUser, crPass):
 def checkPackages():
     """ Checks if required packages are installed, installs them if not """
     getPackages = 'dpkg -l samba libsmbclient smbclient python-gnomekeyring'
-    instPackages = 'sudo apt-get install samba libsmbclient smbclient -y'
-    reply = os.popen(getPackages).read()
-    if reply.count('ii  ') == 4:
-       return
+    instPackages = 'sudo apt-get install samba libsmbclient smbclient python-gnomekeyring -y'
+    print '  Checking for required packages on system, please wait.....'
+    reply = runExternal(getPackages)
+    noPackages = reply.count('ii  ')
+    if noPackages != 4:
+       reply = runExternal(instPackages)
+       print '      ' + str(4 - noPackages) +  ' package(s) were installed!', 
+       raw_input('[Any key to proceed]')
+       print
     else:
-       print '\n  Required packages were not found on the system, installing.....',
-       reply = os.popen(instPackages).read()
-       print 'done!'
-       raw_input('  Any key to proceed to installation of printers...\n')
+       print '      All packages found!\n'
 
 def getPrinters(liste):
     objFile = liste.split('\n')
@@ -250,8 +258,8 @@ signal.signal(signal.SIGWINCH, resizeHandler)
 
 # only import packages/ask for creds if on linux
 if platform.system() == 'Linux':
-    import gnomekeyring as gk
     checkPackages()
+    import gnomekeyring as gk
     linuxCredentials = checkCredentials()
 
 # get printers available
