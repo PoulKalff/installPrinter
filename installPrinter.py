@@ -9,7 +9,7 @@ import platform
 import argparse
 import subprocess
 
-version = "v0.82"   # Implemented commandline-switches
+version = "v0.83"   # Implemented commandline-switch to bypass adding credentials
 
 # --- Variabler ----------------------------------------------------------------------------------
 
@@ -41,6 +41,7 @@ resAdr  = {'fib':'Fibigerstraede',
            'ntv':'Nytorv',
            'vhp':'V.H.Promenade',
            'tgp':'Teglgaards Plads',
+           'thm':'Thomas Manns Vej',
            'sof':'Sofiendalsvej',
            'sgv':'Sohngaardsholmvej',
            'fkj':'Frederikskaj',
@@ -209,7 +210,7 @@ class ShowScreen:
             pDriver = prtDrv_Mac
         self.screen.clear()
         reply = os.popen(prtExec % (pName, pName, pDriver))
-        if platform.system() == 'Linux':
+        if platform.system() == 'Linux' and args.nopass:
             addLinuxCredentials(pName, *linuxCredentials)
         self.screen.addstr(2, 2, "'" + pName.upper() + "' was installed ok", curses.color_pair(0))
         if args.single:
@@ -241,10 +242,11 @@ class ShowScreen:
 
 parser = argparse.ArgumentParser(formatter_class=lambda prog: argparse.HelpFormatter(prog, max_help_position=100, width=100))
 parser.add_argument('files', type=str, nargs="*")
-parser.add_argument("-s", "--single",    action="store_true", dest='single',   help="Do not prompt to install more printers")
-parser.add_argument("-v", "--version",   action="store_true", dest='version',  help="Prints version and quits")
-parser.add_argument("-u", "--user",      action="store",      dest='user',     help="User/email to authenticate printer", nargs='?')
-parser.add_argument("-p", "--pass",      action="store",      dest='password', help="Password to User/email to authenticate printer", nargs='?')
+parser.add_argument("-s", "--single",    action="store_true",  dest='single',   help="Do not prompt to install more printers")
+parser.add_argument("-v", "--version",   action="store_true",  dest='version',  help="Prints version and quits")
+parser.add_argument("-n", "--nopass",    action="store_false", dest='nopass',   help="Do not prompt for user/password")
+parser.add_argument("-u", "--user",      action="store",       dest='user',     help="User/email to authenticate printer", nargs='?')
+parser.add_argument("-p", "--pass",      action="store",       dest='password', help="Password to User/email to authenticate printer", nargs='?')
 args = parser.parse_args()
 
 if args.version:
@@ -256,21 +258,22 @@ print "\x1b[8;32;100t"
 # overwrite resize-handling
 signal.signal(signal.SIGWINCH, resizeHandler)
 
-if platform.system() == 'Linux':
-    checkPackages()
-    import gnomekeyring as gk
-    linuxCredentials = checkCredentials()
-elif platform.system() == 'Darwin':
-    pass
-    # install PIP :     'sudo easy_install pip'
-    # install keyring : 'sudo pip install keyring'
-    # importer keyring: 'import keyring as gk'
+if args.nopass:
+    if platform.system() == 'Linux':
+        checkPackages()
+        import gnomekeyring as gk
+        linuxCredentials = checkCredentials()
+    elif platform.system() == 'Darwin':
+        pass
+        # install PIP :     'sudo easy_install pip'
+        # install keyring : 'sudo pip install keyring'
+        # importer keyring: 'import keyring as gk'
 
-    # testSet = gk.set_password("system", "username", "password")
-    # testGet = gk.get_password("system", "username")
+        # testSet = gk.set_password("system", "username", "password")
+        # testGet = gk.get_password("system", "username")
 
-    # Se om jeg kan GET det password/username/system som virker, se om derefter kan saette det
-    # HVORDAN saetter jeg et password, saa CUPS kan laese det naar det skal bruges? Hvad er forksllen paa 'network password' og 'application password' 
+        # Se om jeg kan GET det password/username/system som virker, se om derefter kan saette det
+        # HVORDAN saetter jeg et password, saa CUPS kan laese det naar det skal bruges? Hvad er forksllen paa 'network password' og 'application password' 
 
 
 
