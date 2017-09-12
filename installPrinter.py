@@ -13,6 +13,7 @@ version = "v0.83"   # Implemented commandline-switch to bypass adding credential
 
 # --- Variabler ----------------------------------------------------------------------------------
 
+credentials = False
 selectLists = [[], [], []]
 urlPrinterList = 'http://172.19.17.66/lgr/installPrinter.list'
 
@@ -66,24 +67,28 @@ def checkCredentials():
     Cpass = args.password if args.password else raw_input("  Please provide the password for the printer : ")
     return (Cuser, Cpass)
 
-def addLinuxCredentials(prt, crUser, crPass):
+def addCredentialsLinux(prt, crUser, crPass):
     gk.item_create_sync(None, gk.ITEM_GENERIC_SECRET, prt, {'user': crUser.lower(), 'domain':'', 'uri': 'ipp://localhost:631/printers/' + prt, 'server': 'mfc-print03.aau.dk', 'protocol': 'smb'}, crPass, True)
     return 1
 
 def checkPackages():
-    """ Checks if required packages are installed, installs them if not """
+    """ Checks if required packages are installed, installs them if not. Returns True/False if anything was/was not installed """
     getPackages = 'dpkg -l samba libsmbclient smbclient python-gnomekeyring'
     instPackages = 'sudo apt-get install samba libsmbclient smbclient python-gnomekeyring -y'
-    print '  Checking for required packages on system, please wait.....'
+    sys.stdout.write('  Checking for required packages on system, please wait...')
+    sys.stdout.flush()
     reply = runExternal(getPackages)
     noPackages = reply.count('ii  ')
     if noPackages != 4:
+       verbForm = ' was' if noPackages == 3 else 's were'
        reply = runExternal(instPackages)
-       print '      ' + str(4 - noPackages) +  ' package(s) were installed!', 
-       raw_input('[Any key to proceed]')
+       print str(4 - noPackages) +  ' package' + verbForm + ' installed!' 
+       raw_input(' [Any key to proceed]')
        print
+       return True
     else:
-       print '      All packages found!\n'
+       print 'all packages found!\n'
+       return False
 
 def getPrinters(liste):
     objFile = liste.split('\n')
@@ -210,8 +215,11 @@ class ShowScreen:
             pDriver = prtDrv_Mac
         self.screen.clear()
         reply = os.popen(prtExec % (pName, pName, pDriver))
-        if platform.system() == 'Linux' and args.nopass:
-            addLinuxCredentials(pName, *linuxCredentials)
+        if credentials:
+            if platform.system() == 'Linux':
+                addCredentialsLinux(pName, *credentials)
+            elif platform.system() == 'Darwin':
+                raise ValueError('NotImplemented Error: Cannot install credentials on Mac')
         self.screen.addstr(2, 2, "'" + pName.upper() + "' was installed ok", curses.color_pair(0))
         if args.single:
             self.screen.refresh()
@@ -260,9 +268,9 @@ signal.signal(signal.SIGWINCH, resizeHandler)
 
 if args.nopass:
     if platform.system() == 'Linux':
-        checkPackages()
-        import gnomekeyring as gk
-        linuxCredentials = checkCredentials()
+        if not checkPackages():     # becuse error if trying to import anything just installed
+            import gnomekeyring as gk
+            credentials = checkCredentials()
     elif platform.system() == 'Darwin':
         pass
         # install PIP :     'sudo easy_install pip'
