@@ -9,7 +9,7 @@ import platform
 import argparse
 import subprocess
 
-version = "v0.83"   # Implemented commandline-switch to bypass adding credentials
+version = "v0.84"   # Better credentials handling
 
 # --- Variabler ----------------------------------------------------------------------------------
 
